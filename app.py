@@ -82,6 +82,16 @@ def adicionar_processo(numero_processo, data, acao, instancia, fase, cliente, em
     conn.commit()
     conn.close()
 
+# Função para excluir processos
+def excluir_processo(id_processo):
+    conn = sqlite3.connect('escritorio_advocacia.db')
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM processos WHERE id = ?', (id_processo,))
+    conn.commit()
+    conn.close()
+
+
+
 # Função para buscar processos
 def buscar_processos(cpf_cnpj=None, status=None):
     conn = sqlite3.connect('escritorio_advocacia.db')
@@ -158,6 +168,10 @@ if opcao == "Início":
             if st.button("Atualizar", key=f"atualizar_{processo[0]}"):
                 atualizar_processo(processo[0], novo_status)
                 st.success("Situação atualizada com sucesso!")
+
+            elif st.button("Excluir", key=f"excluir_{processo[0]}"):
+                excluir_processo(processo[0])
+                st.success("Processo excluído com sucesso!")
 
 elif opcao == "Cadastrar Processos":
     # Página de cadastro de processos
