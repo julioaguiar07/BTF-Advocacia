@@ -2,49 +2,17 @@ import streamlit as st
 import psycopg2
 from psycopg2 import sql
 import os
+from dotenv import load_dotenv
 
-# Função para conectar ao banco de dados PostgreSQL
-def conectar_db():
-    try:
-        conn = psycopg2.connect(os.getenv("DATABASE_URL"))  # Usa a URL do banco de dados
-        return conn
-    except psycopg2.OperationalError as e:
-        st.error(f"Erro ao conectar ao banco de dados: {e}")
-        st.error("Verifique a URL de conexão e as permissões do banco de dados.")
-        return None
+load_dotenv()  # Carrega as variáveis de ambiente do arquivo .env
 
-# Função para criar a tabela de processos (se não existir)
-def criar_tabela():
-    conn = conectar_db()
-    if conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS processos (
-            id SERIAL PRIMARY KEY,
-            numero_processo INTEGER NOT NULL,
-            data TEXT NOT NULL,
-            acao TEXT NOT NULL,
-            instancia TEXT NOT NULL,
-            fase TEXT NOT NULL,
-            cliente TEXT NOT NULL,
-            empresa TEXT NOT NULL,
-            advogado TEXT NOT NULL,
-            status TEXT NOT NULL
-        )
-        ''')
-        conn.commit()
-        conn.close()
-
-# Função para contar processos por status
-def contar_processos_por_status():
-    conn = conectar_db()
-    if conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT status, COUNT(*) FROM processos GROUP BY status')
-        contagem = cursor.fetchall()
-        conn.close()
-        return {status: count for status, count in contagem}
-    return {}
+DATABASE_URL = os.getenv("DATABASE_URL")
+try:
+    conn = psycopg2.connect(DATABASE_URL)
+    print("Conexão bem-sucedida!")
+    conn.close()
+except Exception as e:
+    print(f"Erro ao conectar ao banco de dados: {e}")
 
 # Configuração de estilo
 st.set_page_config(page_title="Gestão de Processos", layout="wide")
