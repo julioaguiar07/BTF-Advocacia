@@ -3,6 +3,14 @@ import psycopg2
 from psycopg2 import sql
 import os
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+try:
+    conn = psycopg2.connect(DATABASE_URL)
+    print("Conexão bem-sucedida!")
+    conn.close()
+except Exception as e:
+    print(f"Erro ao conectar ao banco de dados: {e}")
+
 # Configuração de estilo
 st.set_page_config(page_title="Gestão de Processos", layout="wide")
 st.markdown(
