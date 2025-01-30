@@ -1,5 +1,7 @@
 import streamlit as st
-import sqlite3
+import psycopg2
+from psycopg2 import sql
+import os
 
 # Configuração de estilo
 st.set_page_config(page_title="Gestão de Processos", layout="wide")
@@ -50,59 +52,54 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Conectar ao banco de dados
-conn = sqlite3.connect('escritorio_advocacia.db')
-cursor = conn.cursor()
+# Função para conectar ao banco de dados PostgreSQL
+def conectar_db():
+    conn = psycopg2.connect(os.getenv("DATABASE_URL"))  # Usa a URL do banco de dados
+    return conn
 
-# Criar tabela de processos
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS processos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    numero_processo INTEGER NOT NULL,
-    data TEXT NOT NULL,
-    acao TEXT NOT NULL,
-    instancia TEXT NOT NULL,
-    fase TEXT NOT NULL,
-    cliente TEXT NOT NULL,
-    empresa TEXT NOT NULL,
-    advogado TEXT NOT NULL,
-    status TEXT NOT NULL
-)
-''')
-conn.commit()
+# Função para criar a tabela de processos (se não existir)
+def criar_tabela():
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS processos (
+        id SERIAL PRIMARY KEY,
+        numero_processo INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        acao TEXT NOT NULL,
+        instancia TEXT NOT NULL,
+        fase TEXT NOT NULL,
+        cliente TEXT NOT NULL,
+        empresa TEXT NOT NULL,
+        advogado TEXT NOT NULL,
+        status TEXT NOT NULL
+    )
+    ''')
+    conn.commit()
+    conn.close()
 
-# Função para adicionar processos
+# Função para adicionar um processo
 def adicionar_processo(numero_processo, data, acao, instancia, fase, cliente, empresa, advogado, status):
-    conn = sqlite3.connect('escritorio_advocacia.db')
+    conn = conectar_db()
     cursor = conn.cursor()
     cursor.execute('''
     INSERT INTO processos (numero_processo, data, acao, instancia, fase, cliente, empresa, advogado, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
     ''', (numero_processo, data, acao, instancia, fase, cliente, empresa, advogado, status))
     conn.commit()
     conn.close()
 
-# Função para excluir processos
-def excluir_processo(id_processo):
-    conn = sqlite3.connect('escritorio_advocacia.db')
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM processos WHERE id = ?', (id_processo,))
-    conn.commit()
-    conn.close()
-
-
-
 # Função para buscar processos
 def buscar_processos(cpf_cnpj=None, status=None):
-    conn = sqlite3.connect('escritorio_advocacia.db')
+    conn = conectar_db()
     cursor = conn.cursor()
     query = 'SELECT * FROM processos WHERE 1=1'
     params = []
     if cpf_cnpj:
-        query += ' AND cliente = ?'
+        query += ' AND cliente = %s'
         params.append(cpf_cnpj)
     if status:
-        query += ' AND status = ?'
+        query += ' AND status = %s'
         params.append(status)
     cursor.execute(query, tuple(params))
     resultados = cursor.fetchall()
@@ -111,15 +108,23 @@ def buscar_processos(cpf_cnpj=None, status=None):
 
 # Função para atualizar o status de um processo
 def atualizar_processo(id_processo, novo_status):
-    conn = sqlite3.connect('escritorio_advocacia.db')
+    conn = conectar_db()
     cursor = conn.cursor()
-    cursor.execute('UPDATE processos SET status = ? WHERE id = ?', (novo_status, id_processo))
+    cursor.execute('UPDATE processos SET status = %s WHERE id = %s', (novo_status, id_processo))
+    conn.commit()
+    conn.close()
+
+# Função para excluir um processo
+def excluir_processo(id_processo):
+    conn = conectar_db()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM processos WHERE id = %s', (id_processo,))
     conn.commit()
     conn.close()
 
 # Função para contar processos por status
 def contar_processos_por_status():
-    conn = sqlite3.connect('escritorio_advocacia.db')
+    conn = conectar_db()
     cursor = conn.cursor()
     cursor.execute('SELECT status, COUNT(*) FROM processos GROUP BY status')
     contagem = cursor.fetchall()
@@ -169,9 +174,10 @@ if opcao == "Início":
                 atualizar_processo(processo[0], novo_status)
                 st.success("Situação atualizada com sucesso!")
 
-            elif st.button("Excluir", key=f"excluir_{processo[0]}"):
+            if st.button("Excluir Processo", key=f"excluir_{processo[0]}"):
                 excluir_processo(processo[0])
                 st.success("Processo excluído com sucesso!")
+                st.experimental_rerun()  # Recarrega a página para atualizar a lista
 
 elif opcao == "Cadastrar Processos":
     # Página de cadastro de processos
@@ -191,3 +197,6 @@ elif opcao == "Cadastrar Processos":
         if enviar:
             adicionar_processo(numero_processo, data, acao, instancia, fase, cliente, empresa, advogado, status)
             st.success("Processo cadastrado com sucesso!")
+
+# Criar a tabela (se não existir)
+criar_tabela()
