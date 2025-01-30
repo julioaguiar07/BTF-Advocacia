@@ -2,6 +2,9 @@ import streamlit as st
 import psycopg2
 from psycopg2 import sql
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Carrega as variáveis de ambiente do arquivo .env
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 try:
